@@ -1,0 +1,12 @@
+#***Konwencja/Convention***
+
+#2024.11.24
+#Proponuję, żebyśmy tutaj spisali konwencję, która będzie obowiązywała przy rozwijaniu projektu.
+#Konwencji używa się po to, żeby kod był jednolity estetycznie i przez to czytelniejszy.
+#Do omówienia mamy m. in.:
+#język naturalny wykorzystywany w kodzie, w tym również do nazewnictwa plików projektu (IMHO również nazw projektu i repozytorium),
+#nazewnictwo zmiennych i innych elementów kodu,
+#rozmiar białych znaków, odstępów i spacje, czy taby,
+#opisy komitów,
+
+#Tyle na teraz, konwencja będzie rozwijana w toku powstawania projektu i "implementacji" aplikacji.
