@@ -2,39 +2,57 @@ import requests
 from dotenv import load_dotenv
 import os
 from flask import Flask
+import time
 
 app = Flask(__name__)
 
+
 @app.route("/")
 def data_display():
-
-
     def data_downloading_and_formatting():
 
-
-        def get_and_format_products(phrase, token):
+        def get_and_format_products(phrase, token, delay=0, max_products=200):
+            #zmienna delay wskazuje ile sekund jest przerwy między kolejnymi połączeniami
+            #zmienna max_products wskazuje ile produktów chcemy pokazać w wynikach
             PRODUCTS_URL = "https://api.allegro.pl/sale/products"
-            
+
             # Parametry zapytania i nagłówki
             headers = {
                 'Authorization': f'Bearer {token}',
                 'Accept': 'application/vnd.allegro.public.v1+json',
             }
-            params = {
-                'phrase': phrase,
-            }
+            # id kolejnej strony generowany przez API, dzięki temu mamy dostęp do kolejnego zestawu 30 produktów
+            next_page_id = ''
+            #Tablica wszystkich produktów
+            all_products = []
+            #Ilość wszystkich produktów
+            number_products = 0
+            while number_products <= max_products:
 
-            # Pobieranie produktów
-            response = requests.get(PRODUCTS_URL, headers=headers, params=params)
-            response.raise_for_status()
-            data = response.json()
+                params = {
+                    'phrase': phrase,
+                    'page.id': next_page_id
+                }
 
-            # Przetwarzanie wyników
-            products = data.get('products', [])
+                # Pobieranie produktów
+                response = requests.get(PRODUCTS_URL, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
 
+                # pobiera id kolejnej strony
+                next_page_id = data['nextPage']['id']
+
+                # Przetwarzanie wyników
+                products = data.get('products', [])
+
+                #stworzenie tablicy wszystkich produktów
+                all_products.extend(products)
+                #liczba wszystkich produktów
+                number_products += len(products)
+                time.sleep(delay)
             # Wyświetlenie wyników
-            formatted_data = f"Liczba produktów dla frazy '{phrase}': {len(products)}"
-            for product in products:
+            formatted_data = f"Liczba produktów dla frazy '{phrase}': {len(all_products)}"
+            for product in all_products:
 
                 formatted_data = formatted_data + "<br>" + f"Produkt ID: {product.get('id', 'Brak danych')}"
                 formatted_data = formatted_data + "<br>" + f"Nazwa: {product.get('name', 'Brak nazwy')}"
@@ -55,8 +73,6 @@ def data_display():
 
             return formatted_data
 
-
-
         def get_access_token(client_id, client_secret):
             """
             Funkcja uzyskuje token dostępu do API Allegro.
@@ -74,8 +90,6 @@ def data_display():
 
             return token
 
-
-
         load_dotenv()
         # Dane do uwierzytelnienia
         #zmienne lokalne znajdują się w pliku .env
@@ -87,8 +101,6 @@ def data_display():
         SEARCH_URL = "https://api.allegro.pl/offers/listing"
         PRODUCTS_URL = "https://api.allegro.pl/sale/products"
         file_token_path = "./token.txt"
-
-
 
         # Jeżeli plik token.txt istnieje. Pobiera się token z pliku.
         if os.path.exists(file_token_path) == False:
@@ -113,9 +125,10 @@ def data_display():
 
         return formatted_data
 
-
-
-
     formatted_data = data_downloading_and_formatting()
 
     return formatted_data
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
