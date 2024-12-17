@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wyniki wyszukiwania dla frazy {{data['phrase']}}</title>
+</head>
+	<body>
+		<h1>Wyniki wyszukiwania dla frazy {{data['phrase']}}</h1>
+		<h2>Liczba produktów dla frazy {{data['phrase']}}: {{data['amount']}}</h2>
+
+		<p>{% block content %}
+			{% for product_pack_info_key, product_pack_info_content in data.items() %}
+				{% if product_pack_info_key != 'phrase' and product_pack_info_key != 'amount' %}
+					{% for product_info_key, product_info in product_pack_info_content.items() %}
+                        {{product_info_key}}: {{product_info}} <br>
+                    {% endfor %}
+                    -----------------------------------------------------------------------------------------------<br>
+				{% endif %}
+			{% endfor %}
+		{% endblock  %}</p>
+
+	</body>
+</html>
