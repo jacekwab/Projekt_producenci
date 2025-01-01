@@ -4,8 +4,8 @@ def create_app():
 
     app = Flask(__name__)
     from index import data_display
-    app.add_url_rule('/', endpoint = None, view_func = data_display)
-
+    app.add_url_rule('/results', endpoint = None, view_func = data_display, methods=["GET", "POST"])
+    app.add_url_rule('/', endpoint=None, view_func=data_display, methods=["GET", "POST"])
     return app
 
 
