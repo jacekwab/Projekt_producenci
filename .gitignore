@@ -1,0 +1,6 @@
+*.pyc
+__pycache__/
+
+flaskr/.env/
+flaskr/token.txt/
+token.txt/
