@@ -1,0 +1,86 @@
+body {
+	background-color: aliceblue;
+	min-height: 100vh; /*2025-01-10 Ensures bootstrap sticky footer is always at the bottom of the webpage.*/
+}
+
+.navbar {
+    background-color: #0d6efd !important; /*2025-01-09 11:09:27 TODO: Hopefully !important is temporary and can be replaced with different solution*/
+	padding-top: 0.625rem;
+	padding-bottom: .625rem;
+}
+
+.navbar > .container-fluid {
+	align-items: baseline; /*2025-01-10 Well displayed navbar links despite different word sizes.*/
+	justify-content: flex-start; /*2025-01-10 Links are displayed next and close to apps' title and each other. Title's on the left and the flex-start is too.*/
+	line-height: 1rem; /*2025-01-10 Should help to ensure the navbar has equal height throughtout all instances of templates.*/
+}
+
+.navbar .navbar-brand {
+    color: white; 
+	line-height: 1.25rem; /*2025-01-09 09:14:22 Tymczasowe rozwiązanie wyrównujące wysokość przycisku "Główna"*/
+}
+
+.navbar .navbar-brand:hover, 
+.navbar .navbar-brand:focus {
+    color: white !important; /*2025-01-10 Ensure the hover color is the same as default. TODO: Hopefully !important is temporary and can be replaced with different solution*/
+}
+
+.navbar .navbar-nav .nav-link {
+    color: white !important; /*2025-01-09 11:09:27 TODO: Hopefully !important is temporary and can be replaced with different solution*/
+	padding: 0;
+	margin: auto;
+}
+
+.container-fluid {
+	margin-left: 2.5rem;
+	margin-right: 2.5rem;
+	padding: 0;
+}
+
+@media only screen and (max-width: 1000px) {
+.col-5 {
+	width: 60%;
+  }
+}
+
+
+@media only screen and (max-width: 700px) {
+.col-5 {
+	width: 100%;
+  }
+}
+
+#product-amount-info {
+	padding-top: 0.5rem;
+	padding-bottom: 0.5rem;
+	display: block;
+	border-bottom: dashed;
+	max-width: 720px;
+}
+
+#body-container {
+	margin-left: 2.5rem;/*2025-01-07 10:55:58 TODO: What's best instead of previous 5%? Will rem be a good solution?*/
+	margin-right: 2.5rem;
+}
+
+h1 {
+	margin-top: 1rem;
+}
+
+.form-control {
+	margin-bottom: .5rem;
+	margin-top: 1rem;
+}
+
+.bg-primary {
+  background-color: #0d6efdba !important; /*2025-01-10 TODO: Hopefully !important is temporary and can be replaced with different solution*/
+}
+
+.my-3 {
+  margin-left: 0;
+}
+
+#footer-container {
+	padding-left: 0;
+	margin-left: 2.5rem;
+}
