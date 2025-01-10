@@ -11,22 +11,25 @@
 
 #Tyle na teraz, konwencja będzie rozwijana w toku powstawania projektu i "implementacji" aplikacji.
 
-#2024.12.16
+
+
+#2024.12.16 <- zmienione 2025-01-10
 #Postaramy się zapisy konwencji podzielić na mniej i bardziej istotne (np. od góry do dołu, z przerwami, etc.).
-#Zmienne i nazwy funkcji piszemy snake_casem (do uzupełnienia). Klasy piszemy używając CapWords (inaczej zwany również PascalCasem).
-#Stałe oznaczamy tylko dużymi literami (uppercase). Podkreślnik zamiast spacji.
 #Staramy się unikać pozostawiania nieużywanego kodu.
+
+###Lokalne zasady stylistyki kodu#################################
+#Zdecydowaliśmy się nie wpisywać do konwencji punktów, które są już przewidziane przez PEP8.
+#Staramy sie dodawać docstrings do funkcji, które są trudniejsze do zrozumienia (od najważniejszych funkcji do mniej ważnych). Np. dla dłuższych funkcji krótka notka w miejscu na dokumentację - zamiast komentarza.
+#Możemy dodawać komentarze do trudniejszego kodu. Takiego, który "nie opisuje się sam".
+#Wprowadzanie nietypowych rozwiązań, np. zmiennych powinniśmy oznaczać krótkim komentarzem.
+#Staramy się zachować konsekwentność np. jeśli używamy tabów składających się z 4 spacji w plikach .py to róbmy tak rzeczywiście we wszystkich plikach; Inny przykład: Jeśli używamy tabów składających się z 2 spacji w plikach .html to rzeczywiście takich tabów używajmy we wszystkich plikach z kodem html. Ta zasada jest potrzebna wszędzie tam, gdzie nie obowiązuje PEP8, inaczej ucierpi estetyka kodu. (Można uprościć powyższe do stwierdzenia, że wszędzie tam, gdzie nie obowiązuje PEP8, obowiązuje zasada PRECEDENSU.)
 #Staramy się pisać kod tak, żeby nie potrzebował komentarzy (powszechna praktyka - komentarzy unika się teraz niemalże jak ognia, bo je też przecież trzeba utrzymywać!).
-#Po ostatniej linijce funkcji 2 linijki przerwy do następnego kodu (przerwa niepotrzebna jeśli miałaby być po ostatniej linijce)
-#Staramy się wprowadzać przerwy pomiędzy linijkami wykonującymi niepowiązane blisko działania.
-#Używamy uproszczonego angielskiego w nazwach zmiennych i polskiego w komentarzach. Uproszczonego, czyli bez "of" .
-#Można korzystać z dat w komentarzach (format nieistotny)
+###################################################################################
+
+#Używamy uproszczonego angielskiego w nazwach zmiennych. Uproszczonego, czyli bez "of" .
+#Można korzystać z dat w komentarzach (format nieistotny).
 #Przynajmniej oznacznie "#TODO <z przynajmniej krótkim opisem>" nad lub w linijce kodu, w którego okolicach potrzebujemy i przewidujemy zmianę. Najlepiej zastosować datę wstawienia, żeby było wiadomo przy omawianiu, kiedy takie przewidywanie zostało umieszczone.
 #Nie wykomentowujemy usuwanego kodu chyba, że koniecznie chcemy omówić jego usunięcie w większym gronie.
 #W nazwach branchy zamiast spacji korzystamy z myśliników "-". Przy ważnych komitach można stosować dekoratory w postaci np. wielu myślników, "---" ale koniecznie nadal bez spacji
 #Póki nie wymyślimy, gdzie indziej to zapisywać, wprowadzamy w konwencji ustalenia dotyczące struktury i innych ważnych kwestii, które muszą być konsekwentnie przestrzegane w okresie prowadzenia projektu.
-#Wprowadzanie nietypowych rozwiązań, np. zmiennych powinniśmy oznaczać krótkim komentarzem.
-#Dla dłuższych funkcji krótka notka w miejscu na dokumentację - zamiast komentarza.
 #Zaczynamy pisać testy jednostkowe przynajmniej tak szybko, jak wprowadzimy użytkownikowi możliwość interaktywnego korzystania z danych.
-
-#Tyle na dzisiaj, choć pewnie czegoś jeszcze zapomniałem wpisać.
