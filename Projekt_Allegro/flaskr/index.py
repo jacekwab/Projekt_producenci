@@ -2,7 +2,7 @@ import requests
 from dotenv import load_dotenv
 import os
 import time
-from flask import render_template,request
+from flask import render_template, request, redirect, url_for
 
 # stała delay wskazuje ile sekund jest przerwy między kolejnymi połączeniami
 DELAY = 0
@@ -19,7 +19,10 @@ def data_display():
     else:
         if 'phrase' in request.form:
             # pobiera hasło z formularza
-            phrase=request.form['phrase']
+            phrase = request.form['phrase']
+            if phrase.strip() == "":  # Sprawdź, czy phrase jest pusty lub zawiera tylko białe znaki
+                return redirect(url_for('data_display'))
+
         def data_download_and_preparation():
 
             def get_and_process_products_data(phrase, token):
@@ -35,7 +38,6 @@ def data_display():
                 number_products = 0
 
                 while number_products < MAX_PRODUCTS:
-
                     params = {
                         'phrase': phrase,
                         'page.id': next_page_id
@@ -44,14 +46,15 @@ def data_display():
                     response = requests.get(PRODUCTS_URL, headers=headers, params=params)
                     response.raise_for_status()
                     data = response.json()
-                    next_page_id = data['nextPage']['id']
                     products = data.get('products', [])
                     all_products.extend(products)
 
                     number_products += len(products)
-
+                    next_page = data.get('nextPage')
+                    if not next_page:
+                        break  # Brak kolejnej strony, zakończ pętlę
+                    next_page_id = data['nextPage']['id']
                     time.sleep(DELAY)
-
 
                 # Porządkowanie wyników
                 data_allegro_products = {'phrase': phrase}
@@ -69,9 +72,7 @@ def data_display():
 
                     data_allegro_products[f'Product{ordinal}'] = data_allegro_product
 
-
                 return data_allegro_products
-
 
             def get_access_token(client_id, client_secret):
                 """
@@ -89,7 +90,6 @@ def data_display():
                     file_token.write(token)
 
                 return token
-
 
             load_dotenv()
             # Dane do uwierzytelnienia
@@ -124,7 +124,6 @@ def data_display():
 
             return pack_data_allegro_products
 
-
         pack_data_allegro_products = data_download_and_preparation()
 
-        return render_template('results.html', data = pack_data_allegro_products)
+        return render_template('results.html', data=pack_data_allegro_products)
