@@ -20,7 +20,7 @@ def data_display():
         if 'phrase' in request.form:
             # pobiera hasło z formularza
             phrase = request.form['phrase']
-            if phrase.strip() == "":  # Sprawdź, czy phrase jest pusty lub zawiera tylko białe znaki
+            if phrase.strip() == "": # Sprawdź, czy phrase jest pusty lub zawiera tylko białe znaki
                 return redirect(url_for('data_display'))
 
         def data_download_and_preparation():
@@ -51,8 +51,8 @@ def data_display():
 
                     number_products += len(products)
                     next_page = data.get('nextPage')
-                    if not next_page:
-                        break  # Brak kolejnej strony, zakończ pętlę
+                    if not next_page: # Brak kolejnej strony
+                        break
                     next_page_id = data['nextPage']['id']
                     time.sleep(DELAY)
 
@@ -110,8 +110,6 @@ def data_display():
             else:
                 with open(f"{file_token_path}", "r") as file_token:
                     token = file_token.readline()
-
-            #phrase = "rower"  # Przykładowa fraza wyszukiwania
 
             #Użycie bloku try z powodu przewidzianego błędu nieaktualnego tokenu
             #("requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url:")

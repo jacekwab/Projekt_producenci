@@ -72,6 +72,21 @@ h1 {
 	margin-top: 1rem;
 }
 
+#search-flow-step-space {
+	display: flex;
+}
+
+#error-msg-placeholder {
+	color: red;
+	opacity: 0.9;
+	font-size: 0.75rem;
+	display: block;
+	padding-right: 0.75rem;
+	padding-left: 0.75rem;
+	margin-top: auto;
+	margin-bottom: auto;
+}
+
 .bg-primary {
   background-color: #0d6efdba !important; /*2025-01-10 TODO: Hopefully !important is temporary and can be replaced with different solution*/
 }
