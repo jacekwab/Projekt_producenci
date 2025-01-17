@@ -9,11 +9,14 @@
 {% endblock %}
 
 {% block page_body %}
-	<form id="wyszukiwarka" action="{{ url_for('data_display') }}" method="POST">
+	<form id="search-form" action="{{ url_for('data_display') }}" method="POST">
 		<div class="form-group col-5">
-			<input name="phrase" class="form-control" id="phrase" value="{{ data['phrase'] }}"
+			<input name="phrase" class="form-control" id="search-text-field" value="{{ data['phrase'] }}"
 			placeholder="Podaj nazwę produktu do wyszukania">
-			<button type="submit" class="btn btn-primary">Wyszukaj</button>
+			<div id="search-flow-step-space">
+				<button id="search-button" type="submit" class="btn btn-primary">Wyszukaj</button>
+				<span id="error-msg-placeholder"></span>
+			</div>
 		</div>
 	</form>
 	<span id="product-amount-info"><b>Liczba produktów dla frazy {{ data['phrase' ]}}: {{ data['amount'] }}</b></span>
@@ -21,9 +24,9 @@
 		{% if product_pack_info_key != 'phrase' and product_pack_info_key != 'amount' %}
 			<div class="container p-3 my-3 bg-primary text-white">
 				<p>
-				{% for product_info_key, product_info in product_pack_info_content.items() %}
-					{{product_info_key}}: {{product_info}} <br>
-				{% endfor %}
+					{% for product_info_key, product_info in product_pack_info_content.items() %}
+						{{product_info_key}}: {{product_info}} <br>
+					{% endfor %}
 				</p>
 			</div>
 		{% endif %}

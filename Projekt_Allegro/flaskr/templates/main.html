@@ -1,10 +1,13 @@
 {% extends 'base.html' %}
 {% block page_body %}
     <div><h1>Przeszukaj bazę produktów</h1></div>
-    <form id="wyszukiwarka" action="{{ url_for('data_display') }}" method="POST">
+    <form id="search-form" action="{{ url_for('data_display') }}" method="POST">
         <div class="form-group col-5">
-            <input name="phrase" class="form-control" id="phrase" placeholder="Podaj nazwę produktu do wyszukania">
-            <button type="submit" class="btn btn-primary">Wyszukaj</button>
+            <input name="phrase" class="form-control" id="search-text-field" placeholder="Podaj nazwę produktu do wyszukania">
+			<div id="search-flow-step-space">
+				<button id="search-button" type="submit" class="btn btn-primary">Wyszukaj</button>
+				<span id="error-msg-placeholder"></span>
+			</div>
         </div>
     </form>
 {% endblock %}
