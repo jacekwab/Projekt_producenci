@@ -36,3 +36,11 @@ def test_data_display_post_special_characters(client):
     special_characters_phrase = '!@#$%^&*()_+{}:"<>?[];\',./`~'
     response = client.post('/results', data={'phrase': special_characters_phrase})
     assert response.status_code == 200
+
+def test_data_display_random_phrase(client):
+    """Test the /results route with a random "word" containing
+    two or more character syllables (the polish alphabet characters)."""
+    from tests.auxilary_test_functions import random_word_between_1_20_chars
+    randomised_phrase = random_word_between_1_20_chars()
+    response = client.post('/results', data={'phrase': randomised_phrase})
+    assert response.status_code == 200

@@ -1,6 +1,8 @@
 *.pyc
 __pycache__/
 
-flaskr/.env/
-flaskr/token.txt/
-token.txt/
+flaskr/.env
+flaskr/token.txt
+token.txt
+flaskr/tests/token.txt
+Projekt_Allegro/flaskr/.env
