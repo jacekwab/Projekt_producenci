@@ -26,10 +26,16 @@ def test_data_display_post_valid_phrase(client):
 
 
 def test_data_display_post_empty_phrase(client):
-    rv = client.post('/', data={'phrase': '  '})
-    assert rv.status_code == 405  # Sprawdza, czy nie ma możliwości przekierowania
-    assert rv.location is None  # Sprawdza, czy nie ma przekierowania na żadną stronę
+    response = client.post('/results', data={'phrase': '  '})
+    assert response.status_code == 302  # Sprawdza, czy nie ma możliwości przekierowania
+    assert response.location is '/'  # Sprawdza, czy przekierunkowanie jest na stronę główną
 
+def test_data_display_post_too_long_phrase(client):
+    """Test the /results route with an invalid (too long) input."""
+    long_phrase = 'a' * 2001  #Przykład za długiej frazy
+    response = client.post('/results', data={'phrase': long_phrase})
+    assert response.status_code == 302 #sprawdzić co się stanie
+    assert response.location is '/'
 
 def test_data_display_post_special_characters(client):
     """Test the /results route with a phrase containing special characters."""
