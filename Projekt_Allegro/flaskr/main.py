@@ -10,6 +10,6 @@ def create_app():
 
 
 app = create_app()
-app.config['SECRET_KEY']='a_secret_string' #secret key needed to flash()
+app.config['SECRET_KEY'] = 'a_secret_string'  #secret key needed to flash()
 if __name__ == "__main__":
     app.run(debug=True)

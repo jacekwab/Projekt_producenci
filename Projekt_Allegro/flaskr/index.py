@@ -2,7 +2,7 @@ import requests
 from dotenv import load_dotenv
 import os
 import time
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash,session
 
 # stała delay wskazuje ile sekund jest przerwy między kolejnymi połączeniami
 DELAY = 0
@@ -16,6 +16,7 @@ def search_form_display():
 
 def data_display():
     phrase = request.form['phrase']
+    pack_data_allegro_products = {}
     if phrase.strip() == "" or len(phrase) > 1024: # Sprawdź, czy phrase jest pusty lub zawiera tylko białe znaki
         return redirect(url_for('search_form_display'))
 
@@ -108,9 +109,10 @@ def data_display():
                 token = file_token.readline()
 
         #Użycie bloku try z powodu przewidzianego błędu nieaktualnego tokenu
-        #("requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url:")
         try:
             pack_data_allegro_products = get_and_process_products_data(phrase, token)
+            # Zapisujemy wyniki w sesji, aby nie zniknęły w przypadku błędu
+            session['previous_results'] = pack_data_allegro_products
         except requests.exceptions.HTTPError as http_err:
             # Obsługa specyficznych kodów HTTP
             if http_err.response.status_code == 401:
@@ -138,8 +140,10 @@ def data_display():
         pack_data_allegro_products = data_download_and_preparation()
     except requests.exceptions.HTTPError as http_err:
         if http_err.response.status_code == 401:
-            flash("Przepraszamy. Napotkaliśmy na problem po stronie serwera Allegro")
-            #raise Exception("Błąd 401: Token nieaktualny lub nieprawidłowy.")
+            flash("Nieprawidłowy lub nieaktualny token. Spróbuj ponownie.")
+            if request.referrer and "/results" in request.referrer:
+                previous_results = session.pop('previous_results', {})
+                return render_template('results.html', data=previous_results)
             return redirect(url_for('search_form_display'))
         elif http_err.response.status_code == 429:
             retry_after = int(http_err.response.headers.get('Retry-After', 1))
@@ -149,13 +153,16 @@ def data_display():
             print(f"Błąd serwera ({http_err.response.status_code}). Ponawianie...")
         else:
             print(f"HTTPError: {http_err}")
-            raise
     except requests.exceptions.ConnectionError:
         print("Błąd połączenia. Sprawdzam połączenie i ponawiam...")
         time.sleep(DELAY)
+        flash("Błąd połączenia. Spróbuj ponownie.")
+        if request.referrer and "/results" in request.referrer:
+            previous_results = session.pop('previous_results', {})
+            return render_template('results.html', data=previous_results)
+        return redirect(url_for('search_form_display'))
     except requests.exceptions.Timeout:
         print("Przekroczono limit czasu oczekiwania. Ponawianie...")
     except Exception as e:
         print(f"Wystąpił nieoczekiwany błąd: {e}")
-        raise
     return render_template('results.html', data=pack_data_allegro_products)

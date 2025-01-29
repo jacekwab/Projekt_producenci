@@ -1,6 +1,9 @@
 import pytest
 import sys
 import os
+import requests
+import socket
+
 # Add the parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from flaskr.main import app
@@ -30,18 +33,56 @@ def test_data_display_post_empty_phrase(client):
     assert response.status_code == 302  # Sprawdza, czy nie ma możliwości przekierowania
     assert response.location is '/'  # Sprawdza, czy przekierunkowanie jest na stronę główną
 
+
+def test_data_display_invalid_token(client, mocker):
+    """Test obsługi nieprawidłowego tokena (401)."""
+
+    # Tworzymy sztuczną odpowiedź API z kodem 401 (Unauthorized)
+    mock_response = mocker.Mock()
+    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mocker.Mock(status_code=401))
+
+    # Mockujemy requests.get, aby zwracało naszą sztuczną odpowiedź
+    mocker.patch('requests.get', return_value=mock_response)
+
+    response = client.post('/results', data={'phrase': 'valid input'})
+
+    # Sprawdzamy, czy błąd został obsłużony
+    assert response.status_code == 302
+
+
+# Blokujemy połączenia sieciowe, aby zasymulować brak internetu
+class NoInternet:
+    def __enter__(self):
+        self.original_socket = socket.socket
+        socket.socket = lambda *args, **kwargs: None  # Blokujemy tworzenie gniazda
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        socket.socket = self.original_socket  # Przywracamy działanie sieci
+
+
+def test_no_internet_connection_on_results_page(client):
+    """Test sprawdzający obsługę błędu braku internetu na stronie /results."""
+
+    with NoInternet():  # Symulujemy brak internetu
+        response = client.post('/results', data={'phrase': 'test'})
+    # Sprawdzamy, czy użytkownik NIE został przekierowany
+    assert response.status_code == 200  # Powinna zostać wyrenderowana strona wyników
+
+
 def test_data_display_post_too_long_phrase(client):
     """Test the /results route with an invalid (too long) input."""
     long_phrase = 'a' * 2001  #Przykład za długiej frazy
     response = client.post('/results', data={'phrase': long_phrase})
-    assert response.status_code == 302 #sprawdzić co się stanie
+    assert response.status_code == 302  #sprawdzić co się stanie
     assert response.location is '/'
+
 
 def test_data_display_post_special_characters(client):
     """Test the /results route with a phrase containing special characters."""
     special_characters_phrase = '!@#$%^&*()_+{}:"<>?[];\',./`~'
     response = client.post('/results', data={'phrase': special_characters_phrase})
     assert response.status_code == 200
+
 
 def test_data_display_random_phrase(client):
     """Test the /results route with a random "word" containing

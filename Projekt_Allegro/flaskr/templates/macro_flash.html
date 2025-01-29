@@ -1,5 +1,5 @@
 {% macro show_messages() %} <!-- definition of Macro. It is like Python function to use in html -->
 {% for message in get_flashed_messages() %}
-<div>{{message}}</div>
+<div class="alert alert-warning" role="alert">{{message}}</div>
 {%endfor%}
 {%endmacro%}
