@@ -2,7 +2,7 @@ import requests
 from dotenv import load_dotenv
 import os
 import time
-from flask import render_template, request, redirect, url_for, flash,session
+from flask import render_template, request, redirect, url_for, flash
 
 # stała delay wskazuje ile sekund jest przerwy między kolejnymi połączeniami
 DELAY = 0
@@ -10,14 +10,18 @@ DELAY = 0
 # 2024-12-16 20:48:56 do stałej max_products musi zostać przypisana wartość wielokrotności 30
 # inaczej rzeczywista liczba wyników przekroczy wartość max_products
 MAX_PRODUCTS = 210
+last_results = None  # Przechowuje ostatnie wyniki w pamięci
+
 
 def search_form_display():
     return render_template('main.html')
 
+
 def data_display():
+    global last_results
     phrase = request.form['phrase']
     pack_data_allegro_products = {}
-    if phrase.strip() == "" or len(phrase) > 1024: # Sprawdź, czy phrase jest pusty lub zawiera tylko białe znaki
+    if phrase.strip() == "" or len(phrase) > 1024:  # Sprawdź, czy phrase jest pusty lub zawiera tylko białe znaki
         return redirect(url_for('search_form_display'))
 
     def data_download_and_preparation():
@@ -47,11 +51,10 @@ def data_display():
 
                 number_products += len(products)
                 next_page = data.get('nextPage')
-                if not next_page: # Brak kolejnej strony
+                if not next_page:  # Brak kolejnej strony
                     break
                 next_page_id = data['nextPage']['id']
                 time.sleep(DELAY)
-
 
             # Porządkowanie wyników
             data_allegro_products = {'phrase': phrase}
@@ -68,7 +71,6 @@ def data_display():
                     data_allegro_product['Marka'] = "Producent: Brak danych"
 
                 data_allegro_products[f'Product{ordinal}'] = data_allegro_product
-
             return data_allegro_products
 
         def get_access_token(client_id, client_secret):
@@ -111,8 +113,6 @@ def data_display():
         #Użycie bloku try z powodu przewidzianego błędu nieaktualnego tokenu
         try:
             pack_data_allegro_products = get_and_process_products_data(phrase, token)
-            # Zapisujemy wyniki w sesji, aby nie zniknęły w przypadku błędu
-            session['previous_results'] = pack_data_allegro_products
         except requests.exceptions.HTTPError as http_err:
             # Obsługa specyficznych kodów HTTP
             if http_err.response.status_code == 401:
@@ -136,14 +136,14 @@ def data_display():
                 print(f"HTTPError: Wystąpił nieoczekiwany błąd HTTP ({http_err.response.status_code}): {http_err}")
                 raise
         return pack_data_allegro_products
+
     try:
         pack_data_allegro_products = data_download_and_preparation()
     except requests.exceptions.HTTPError as http_err:
         if http_err.response.status_code == 401:
             flash("Nieprawidłowy lub nieaktualny token. Spróbuj ponownie.")
             if request.referrer and "/results" in request.referrer:
-                previous_results = session.pop('previous_results', {})
-                return render_template('results.html', data=previous_results)
+                return render_template('results.html', data=last_results)
             return redirect(url_for('search_form_display'))
         elif http_err.response.status_code == 429:
             retry_after = int(http_err.response.headers.get('Retry-After', 1))
@@ -158,11 +158,13 @@ def data_display():
         time.sleep(DELAY)
         flash("Błąd połączenia. Spróbuj ponownie.")
         if request.referrer and "/results" in request.referrer:
-            previous_results = session.pop('previous_results', {})
-            return render_template('results.html', data=previous_results)
+            return render_template('results.html', data=last_results)
         return redirect(url_for('search_form_display'))
+
     except requests.exceptions.Timeout:
         print("Przekroczono limit czasu oczekiwania. Ponawianie...")
     except Exception as e:
         print(f"Wystąpił nieoczekiwany błąd: {e}")
+    if pack_data_allegro_products:
+        last_results = pack_data_allegro_products
     return render_template('results.html', data=pack_data_allegro_products)
