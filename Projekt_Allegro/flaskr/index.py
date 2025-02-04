@@ -2,7 +2,7 @@ import requests
 from dotenv import load_dotenv
 import os
 import time
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, jsonify
 
 # stała delay wskazuje ile sekund jest przerwy między kolejnymi połączeniami
 DELAY = 0
@@ -10,15 +10,95 @@ DELAY = 0
 # 2024-12-16 20:48:56 do stałej max_products musi zostać przypisana wartość wielokrotności 30
 # inaczej rzeczywista liczba wyników przekroczy wartość max_products
 MAX_PRODUCTS = 210
-last_results = None  # Przechowuje ostatnie wyniki w pamięci
+UNEXPECTED_ERROR_MSG = "Wystąpił nieoczekiwany, nieznany błąd naszej aplikacji webowej." + \
+                       "Możesz spróbować ponownie."
 
+def get_auth_data():
+    load_dotenv()
+    # Dane do uwierzytelnienia
+    # zmienne lokalne znajdują się w pliku .env
+    client_id = os.getenv("CLIENT_ID")
+    client_secret = os.getenv("CLIENT_SECRET")
+
+    return client_id, client_secret
+
+def get_access_token(client_id, client_secret):
+    """
+    Funkcja uzyskuje token dostępu do API Allegro.
+    """
+    # Endpointy Allegro API
+    AUTH_URL = "https://allegro.pl/auth/oauth/token"
+    FILE_TOKEN_PATH = "./token.txt"
+
+    response = requests.post(
+        AUTH_URL,
+        auth=(client_id, client_secret),
+        data={'grant_type': 'client_credentials'}
+    )
+    response.raise_for_status()
+    token = response.json()['access_token']
+
+    with open(f"{FILE_TOKEN_PATH}", "w") as file_token:
+        file_token.write(token)
+
+    return token
+
+def allegro_api_request_check():
+    file_token_path = "./token.txt"
+
+    if os.path.exists(file_token_path) == False:
+        file_token = open(f"{file_token_path}", "w")
+        file_token.close()
+        token = ""
+    else:
+        with open(f"{file_token_path}", "r") as file_token:
+            token = file_token.readline()
+
+    PRODUCTS_URL = "https://api.allegro.pl/sale/products"
+    PHRASE = "Nonexistent item"
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Accept': 'application/vnd.allegro.public.v1+json',
+    }
+    # id kolejnej strony generowany przez API, dzięki temu mamy dostęp do kolejnego zestawu 30 produktów
+    next_page_id = ''
+    all_products = []
+    number_products = 0
+
+    params = {
+        'phrase': PHRASE
+    }
+    response = requests.get(PRODUCTS_URL, headers=headers, params=params)
+    response.raise_for_status()
+
+def token_availability_check():
+    client_id, client_secret = get_auth_data()
+    try:
+        allegro_api_request_check()
+    except Exception as e:
+        get_access_token(client_id, client_secret)
+        print(f"Wystąpił nieoczekiwany błąd: {e}")
+
+def check_connection():
+    #time.sleep(10) #2025-02-10 18:10:13 Tymczasowy sposób na przetestowanie właściwego działania frontendu
+    try:
+        token_availability_check()
+        #data_display() #2025-02-10 18:10:13 Tymczasowy sposób na przetestowanie właściwego działania frontendu
+        return jsonify({'success': True}), 200
+    except requests.exceptions.HTTPError as e:
+        print(f"Wystąpił nieoczekiwany błąd: {e}")
+        return (jsonify({'success': False,
+                        'error_message': 'Nie udało się połączyć z zewnętrznym serwerem Allegro, przepraszamy.'}), 500)
+    except requests.exceptions.Timeout as e:
+        print(f"Wystąpił nieoczekiwany błąd: {e}")
+        return jsonify({'success': False,
+                        'error_message': 'Zewnętrzny serwer Allegro nie odpowiada.'}), 500
 
 def search_form_display():
     return render_template('main.html')
 
 
 def data_display():
-    global last_results
     phrase = request.form['phrase']
     pack_data_allegro_products = {}
     if phrase.strip() == "" or len(phrase) > 1024:  # Sprawdź, czy phrase jest pusty lub zawiera tylko białe znaki
@@ -73,33 +153,12 @@ def data_display():
                 data_allegro_products[f'Product{ordinal}'] = data_allegro_product
             return data_allegro_products
 
-        def get_access_token(client_id, client_secret):
-            """
-            Funkcja uzyskuje token dostępu do API Allegro.
-            """
-            response = requests.post(
-                AUTH_URL,
-                auth=(client_id, client_secret),
-                data={'grant_type': 'client_credentials'}
-            )
-            response.raise_for_status()
-            token = response.json()['access_token']
-
-            with open(f"{file_token_path}", "w") as file_token:
-                file_token.write(token)
-
-            return token
-
         load_dotenv()
         # Dane do uwierzytelnienia
         #zmienne lokalne znajdują się w pliku .env
         CLIENT_ID = os.getenv("CLIENT_ID")
         CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
-        # Endpointy Allegro API
-        AUTH_URL = "https://allegro.pl/auth/oauth/token"
-        SEARCH_URL = "https://api.allegro.pl/offers/listing"
-        PRODUCTS_URL = "https://api.allegro.pl/sale/products"
         file_token_path = "./token.txt"
 
         if os.path.exists(file_token_path) == False:
@@ -121,50 +180,45 @@ def data_display():
                 return get_and_process_products_data(phrase, token)
             elif http_err.response.status_code == 403:
                 print("Błąd 403: Brak uprawnień do zasobu. Sprawdź token i endpoint.")
-                raise
-            elif http_err.response.status_code == 429:
-                retry_after = int(http_err.response.headers.get('Retry-After', 1))
-                print(f"Błąd 429: Przekroczono limit żądań. Spróbuję ponownie za {retry_after} sekund.")
-                time.sleep(retry_after)
-                return get_and_process_products_data(phrase, token)
             elif 500 <= http_err.response.status_code < 600:
                 print(
-                    f"Błąd serwera ({http_err.response.status_code}): Problem po stronie Allegro. Spróbuję ponownie...")
-                time.sleep(2)  # Czekanie przed ponownym zapytaniem
-                return get_and_process_products_data(phrase, token)
+                    f"Błąd serwera ({http_err.response.status_code}): Problem po stronie Allegro.")
             else:
                 print(f"HTTPError: Wystąpił nieoczekiwany błąd HTTP ({http_err.response.status_code}): {http_err}")
-                raise
         return pack_data_allegro_products
 
     try:
         pack_data_allegro_products = data_download_and_preparation()
     except requests.exceptions.HTTPError as http_err:
         if http_err.response.status_code == 401:
-            flash("Nieprawidłowy lub nieaktualny token. Spróbuj ponownie.")
-            if request.referrer and "/results" in request.referrer:
-                return render_template('results.html', data=last_results)
+            flash("Błąd naszej aplikacji webowej. Możesz spróbować ponownie.")
             return redirect(url_for('search_form_display'))
         elif http_err.response.status_code == 429:
             retry_after = int(http_err.response.headers.get('Retry-After', 1))
-            print(f"Przekroczono limit żądań. Czekanie {retry_after} sekund...")
+            print(f"Przekroczono limit żądań. Serwer odpowiada czasem oczekiwania: {retry_after} sekund.")
             time.sleep(retry_after)
+            user_retry_after = retry_after * 2
+            flash("Nasza aplikacja webowa przekroczyła dozwoloną liczbę połączeń z serwerem Allegro." + \
+                  f"Spróbuj ponownie za {user_retry_after} sekund/y.")
+            return redirect(url_for('search_form_display'))
         elif 500 <= http_err.response.status_code < 600:
-            print(f"Błąd serwera ({http_err.response.status_code}). Ponawianie...")
+            print(f"Błąd serwera ({http_err.response.status_code}).")
+            flash(UNEXPECTED_ERROR_MSG)
+            return redirect(url_for('search_form_display'))
         else:
             print(f"HTTPError: {http_err}")
+            flash(UNEXPECTED_ERROR_MSG)
+            return redirect(url_for('search_form_display'))
     except requests.exceptions.ConnectionError:
-        print("Błąd połączenia. Sprawdzam połączenie i ponawiam...")
+        print("Błąd połączenia. Rezygnuję i wracam do strony głównej.")
         time.sleep(DELAY)
-        flash("Błąd połączenia. Spróbuj ponownie.")
-        if request.referrer and "/results" in request.referrer:
-            return render_template('results.html', data=last_results)
+        flash("Błąd połączenia. Możesz spróbować ponownie.")
         return redirect(url_for('search_form_display'))
 
     except requests.exceptions.Timeout:
         print("Przekroczono limit czasu oczekiwania. Ponawianie...")
     except Exception as e:
         print(f"Wystąpił nieoczekiwany błąd: {e}")
-    if pack_data_allegro_products:
-        last_results = pack_data_allegro_products
+        flash(UNEXPECTED_ERROR_MSG)
+        return redirect(url_for('search_form_display'))
     return render_template('results.html', data=pack_data_allegro_products)
