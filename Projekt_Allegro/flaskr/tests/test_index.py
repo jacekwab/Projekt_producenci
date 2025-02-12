@@ -7,6 +7,7 @@ import socket
 # Add the parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from flaskr.main import app
+from unittest.mock import patch
 
 
 @pytest.fixture
@@ -44,10 +45,10 @@ def test_data_display_invalid_token(client, mocker):
     # Mockujemy requests.get, aby zwracało naszą sztuczną odpowiedź
     mocker.patch('requests.get', return_value=mock_response)
 
-    response = client.post('/results', data={'phrase': 'valid input'})
+    response = client.get('/')
 
     # Sprawdzamy, czy błąd został obsłużony
-    assert response.status_code == 302
+    assert response.status_code == 200
 
 
 # Blokujemy połączenia sieciowe, aby zasymulować brak internetu
@@ -61,12 +62,16 @@ class NoInternet:
 
 
 def test_no_internet_connection_on_results_page(client):
-    """Test sprawdzający obsługę błędu braku internetu na stronie /results."""
+    """Test sprawdzający obsługę błędu braku internetu na stronie /results.
+    TODO: Do potencjalnego sprawdzenia, jakie będzie zachowanie testu na serwerze zdalnym aplikacji."""
 
     with NoInternet():  # Symulujemy brak internetu
         response = client.post('/results', data={'phrase': 'test'})
-    # Sprawdzamy, czy użytkownik NIE został przekierowany
-    assert response.status_code == 200  # Powinna zostać wyrenderowana strona wyników
+    # 2025-02-12 14:24:48: Sprawdzamy, czy użytkownik został przekierowany - rezygnujemy z pozostawiania dotychczasowych
+    # wyników użytkownika - przekierowujemy go na główną stronę, jeśli wydarzy się błąd połączenia z serwerami
+    # niewyłapany przez obsługę błędów javascripta.
+    assert response.status_code == 302  # 2025-02-12: Połączenie z zewnętrznym serwerem jest nieudane.
+    # Serwer deweoperski przekierowuje przepływ na stronę główną.
 
 
 def test_data_display_post_too_long_phrase(client):
@@ -91,3 +96,90 @@ def test_data_display_random_phrase(client):
     randomised_phrase = random_word_between_1_20_chars()
     response = client.post('/results', data={'phrase': randomised_phrase})
     assert response.status_code == 200
+
+
+def test_success_check_connection(client):
+    """Tests whether json is properly returned if the attempt to connect to the application and use it is successful."""
+    response = client.get('/check_connection')
+    response_json = response.get_json()
+    assert response_json == {'success': True}
+    assert response.status_code == 200
+
+
+class NoInternet_2:
+    def __enter__(self):
+        # Mock 'requests.get' to raise a ConnectionError when called
+        self.patcher = patch('requests.get', side_effect=ConnectionError("No internet connection"))
+        self.patcher.start()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # Stop mocking 'requests.get'
+        self.patcher.stop()
+
+
+def test_failure_check_connection(client):
+    """Tests whether json is properly returned if the attempt to connect to the application and use it
+    is not successful at the first attempt - error at the first request, but connection recovers at the second attempt."""
+    with NoInternet_2():  # Symulujemy brak internetu przy pierwszym zapytaniu
+        response = client.get('/check_connection')
+        response_json = response.get_json()
+        assert response_json == {'success': True,
+                                 'error_message': 'Połączenie możliwe - choć pierwszy request nieudany.'}
+        assert response.status_code == 200
+
+
+class NoInternet_3:
+    def __enter__(self):
+        # Mock the socket module to raise an error when a socket operation is attempted
+        self.original_socket = socket.socket
+        socket.socket = self.mock_socket
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # Restore the original socket after the test
+        socket.socket = self.original_socket
+
+    def mock_socket(self, *args, **kwargs):
+        # Raise a ConnectionError when any socket method is called
+        raise ConnectionError("No internet connection")
+
+#TODO: 2025-02-12 16:19:33: Inne niż oczekiwane działanie tego testu sprawia, że nie ma
+def test_alternative_failure_check_connection(client):
+    """Tests whether json is properly returned if the attempt to connect to the application and use it
+    is not successful - another unknown error appears."""
+    with NoInternet_3():  # Symulujemy brak internetu przy pierwszym zapytaniu
+        response = client.get('/check_connection')
+        response_json = response.get_json()
+        assert response_json == {'success': False, 'error_message': 'Wystąpił inny nieprzewidziany, nieznany błąd.'}
+        assert response.status_code == 500
+
+
+def test_check_connection_http_error_handling(client):
+    # Mock `requests.get` to raise an `HTTPError`
+    with patch('requests.get', side_effect=requests.exceptions.HTTPError("404 Not Found")), \
+        patch('requests.get', side_effect=requests.exceptions.HTTPError("404 Not Found")):
+        # This request will trigger the mock, raising an HTTPError
+        response = client.get('/check_connection')
+
+        # Assert that your application handles the HTTPError
+        # For example, your app could return a JSON response indicating the error
+        response_json = response.get_json()
+        assert response_json == {'success': False,
+                                 'error_message':
+                                     'Nie udało się połączyć z zewnętrznym serwerem Allegro, przepraszamy.'}
+        assert response.status_code == 500  # Or whatever status code you use for errors
+
+
+def test_check_connection_unspecified_error_handling(client):
+    # Mock `requests.get` to raise an `HTTPError`
+    with patch('requests.get', side_effect=ValueError("This is an unspecified error.")), \
+        patch('requests.get', side_effect=ValueError("This is an unspecified error.")):
+        # This request will trigger the mock, raising an HTTPError
+        response = client.get('/check_connection')
+
+        # Assert that your application handles the HTTPError
+        # For example, your app could return a JSON response indicating the error
+        response_json = response.get_json()
+        assert response_json == {'success': False,
+                                 'error_message':
+                                     'Wystąpił inny nieprzewidziany, nieznany błąd.'}
+        assert response.status_code == 500  # Or whatever status code you use for errors

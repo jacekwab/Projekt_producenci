@@ -1,5 +1,4 @@
 import random
-import sys
 
 def random_word_between_1_20_chars():
     """Funkcja oparta o klasyczne prawdopodobieństwo generuje 'słowa' złożone z krótkich ciągów liter mających

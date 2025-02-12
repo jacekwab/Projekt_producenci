@@ -43,10 +43,20 @@ def get_access_token(client_id, client_secret):
 
     return token
 
-def allegro_api_request_check():
+
+class FirstConnCheckError(Exception):
+    """Mainly to employ NoInternet_2 solution.
+    To inform about a failure of solely the first Allegro connection attempt."""
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+def allegro_api_connection_check():
+
     file_token_path = "./token.txt"
 
-    if os.path.exists(file_token_path) == False:
+    if not os.path.exists(file_token_path):
         file_token = open(f"{file_token_path}", "w")
         file_token.close()
         token = ""
@@ -60,39 +70,40 @@ def allegro_api_request_check():
         'Authorization': f'Bearer {token}',
         'Accept': 'application/vnd.allegro.public.v1+json',
     }
-    # id kolejnej strony generowany przez API, dzięki temu mamy dostęp do kolejnego zestawu 30 produktów
-    next_page_id = ''
-    all_products = []
-    number_products = 0
 
     params = {
         'phrase': PHRASE
     }
-    response = requests.get(PRODUCTS_URL, headers=headers, params=params)
-    response.raise_for_status()
-
-def token_availability_check():
     client_id, client_secret = get_auth_data()
     try:
-        allegro_api_request_check()
-    except Exception as e:
+        response = requests.get(PRODUCTS_URL, headers=headers, params=params)
+        response.raise_for_status()
+    except ConnectionError as e:
+        print(f"allegro_api_connection_check(): Wystąpił błąd podczas pierwszego sprawdzenia połączenia z Allegro: {e}")
         get_access_token(client_id, client_secret)
-        print(f"Wystąpił nieoczekiwany błąd: {e}")
+        raise FirstConnCheckError("First connection request was a failure. Token was renewed successfully.")
+
 
 def check_connection():
     #time.sleep(10) #2025-02-10 18:10:13 Tymczasowy sposób na przetestowanie właściwego działania frontendu
     try:
-        token_availability_check()
+        allegro_api_connection_check()
         #data_display() #2025-02-10 18:10:13 Tymczasowy sposób na przetestowanie właściwego działania frontendu
         return jsonify({'success': True}), 200
+    except FirstConnCheckError:
+        return jsonify({'success': True, 'error_message': 'Połączenie możliwe - choć pierwszy request nieudany.'}), 200
     except requests.exceptions.HTTPError as e:
-        print(f"Wystąpił nieoczekiwany błąd: {e}")
+        print(f"check_connection() except requests.exceptions.HTTPError : Wystąpił nieoczekiwany błąd: {e}")
         return (jsonify({'success': False,
                         'error_message': 'Nie udało się połączyć z zewnętrznym serwerem Allegro, przepraszamy.'}), 500)
-    except requests.exceptions.Timeout as e:
-        print(f"Wystąpił nieoczekiwany błąd: {e}")
-        return jsonify({'success': False,
-                        'error_message': 'Zewnętrzny serwer Allegro nie odpowiada.'}), 500
+    except ConnectionError as e:#TODO: 2025-02-12 16:19:33: Sprawdzić, czemu dotychczasowe sposoby testowania nie działają...
+        #TODO: 2025-02-12 16:19:33:... dla tego przypadku. 2 połączenie nieudane - zostaje uruchomiony ten blok.
+        print(f"check_connection() except ConnectionError : Wystąpił błąd połączenia internetowego: {e}")
+        return jsonify({'success': False, 'error_message': 'Brak połączenia internetowego.'}), 500
+    except Exception as e:
+        print(f"check_connection() Exception: Wystąpił nieoczekiwany błąd: {e}")
+        return jsonify({'success': False, 'error_message': 'Wystąpił inny nieprzewidziany, nieznany błąd.'}), 500
+
 
 def search_form_display():
     return render_template('main.html')
@@ -100,7 +111,6 @@ def search_form_display():
 
 def data_display():
     phrase = request.form['phrase']
-    pack_data_allegro_products = {}
     if phrase.strip() == "" or len(phrase) > 1024:  # Sprawdź, czy phrase jest pusty lub zawiera tylko białe znaki
         return redirect(url_for('search_form_display'))
 
@@ -123,7 +133,7 @@ def data_display():
                     'phrase': phrase,
                     'page.id': next_page_id
                 }
-                response = requests.get(PRODUCTS_URL, headers=headers, params=params)
+                response = requests.get(PRODUCTS_URL, headers=headers, params=params, timeout = 180)
                 response.raise_for_status()
                 data = response.json()
                 products = data.get('products', [])
@@ -153,6 +163,8 @@ def data_display():
                 data_allegro_products[f'Product{ordinal}'] = data_allegro_product
             return data_allegro_products
 
+        pack_data_allegro_products = {}
+
         load_dotenv()
         # Dane do uwierzytelnienia
         #zmienne lokalne znajdują się w pliku .env
@@ -180,9 +192,15 @@ def data_display():
                 return get_and_process_products_data(phrase, token)
             elif http_err.response.status_code == 403:
                 print("Błąd 403: Brak uprawnień do zasobu. Sprawdź token i endpoint.")
+            elif http_err.response.status_code == 429:
+                retry_after = int(http_err.response.headers.get('Retry-After', 1))
+                print(f"Błąd 429: Przekroczono limit żądań. Spróbuję ponownie za {retry_after} sekund.")
+                time.sleep(retry_after)
+                return get_and_process_products_data(phrase, token)
             elif 500 <= http_err.response.status_code < 600:
                 print(
-                    f"Błąd serwera ({http_err.response.status_code}): Problem po stronie Allegro.")
+                    f"data_download_and_preparation(): Błąd serwera ({http_err.response.status_code}): " +
+                    "Problem po stronie Allegro.")
             else:
                 print(f"HTTPError: Wystąpił nieoczekiwany błąd HTTP ({http_err.response.status_code}): {http_err}")
         return pack_data_allegro_products
@@ -196,7 +214,6 @@ def data_display():
         elif http_err.response.status_code == 429:
             retry_after = int(http_err.response.headers.get('Retry-After', 1))
             print(f"Przekroczono limit żądań. Serwer odpowiada czasem oczekiwania: {retry_after} sekund.")
-            time.sleep(retry_after)
             user_retry_after = retry_after * 2
             flash("Nasza aplikacja webowa przekroczyła dozwoloną liczbę połączeń z serwerem Allegro." + \
                   f"Spróbuj ponownie za {user_retry_after} sekund/y.")
@@ -210,15 +227,17 @@ def data_display():
             flash(UNEXPECTED_ERROR_MSG)
             return redirect(url_for('search_form_display'))
     except requests.exceptions.ConnectionError:
-        print("Błąd połączenia. Rezygnuję i wracam do strony głównej.")
+        print("data_display(): Błąd połączenia. Rezygnuję i wracam do strony głównej.")
         time.sleep(DELAY)
         flash("Błąd połączenia. Możesz spróbować ponownie.")
         return redirect(url_for('search_form_display'))
 
     except requests.exceptions.Timeout:
-        print("Przekroczono limit czasu oczekiwania. Ponawianie...")
+        print("Przekroczono limit czasu oczekiwania.")
+        flash("Błąd połączenia. Możesz spróbować ponownie.")
+        return redirect(url_for('search_form_display'))
     except Exception as e:
-        print(f"Wystąpił nieoczekiwany błąd: {e}")
+        print(f"data_display() Exception: Wystąpił nieoczekiwany błąd: {e}")
         flash(UNEXPECTED_ERROR_MSG)
         return redirect(url_for('search_form_display'))
     return render_template('results.html', data=pack_data_allegro_products)
