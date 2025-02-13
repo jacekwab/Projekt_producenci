@@ -124,7 +124,7 @@ def test_failure_check_connection(client):
         response = client.get('/check_connection')
         response_json = response.get_json()
         assert response_json == {'success': True,
-                                 'error_message': 'Połączenie możliwe - choć pierwszy request nieudany.'}
+                                 'error_message': 'Błąd potwierdzeniem odpowiedzi serwera Allegro.'}
         assert response.status_code == 200
 
 
@@ -160,26 +160,23 @@ def test_check_connection_http_error_handling(client):
         # This request will trigger the mock, raising an HTTPError
         response = client.get('/check_connection')
 
-        # Assert that your application handles the HTTPError
-        # For example, your app could return a JSON response indicating the error
         response_json = response.get_json()
-        assert response_json == {'success': False,
+        assert response_json == {'success': True,
                                  'error_message':
-                                     'Nie udało się połączyć z zewnętrznym serwerem Allegro, przepraszamy.'}
-        assert response.status_code == 500  # Or whatever status code you use for errors
+                                     'Błąd potwierdzeniem odpowiedzi serwera Allegro.'}
+        assert response.status_code == 200
 
 
 def test_check_connection_unspecified_error_handling(client):
-    # Mock `requests.get` to raise an `HTTPError`
+    # Mock `requests.get` to raise an `ValueError`
     with patch('requests.get', side_effect=ValueError("This is an unspecified error.")), \
         patch('requests.get', side_effect=ValueError("This is an unspecified error.")):
-        # This request will trigger the mock, raising an HTTPError
+        # This request will trigger the mock, raising an ValueError
         response = client.get('/check_connection')
 
-        # Assert that your application handles the HTTPError
-        # For example, your app could return a JSON response indicating the error
+
         response_json = response.get_json()
         assert response_json == {'success': False,
                                  'error_message':
                                      'Wystąpił inny nieprzewidziany, nieznany błąd.'}
-        assert response.status_code == 500  # Or whatever status code you use for errors
+        assert response.status_code == 500

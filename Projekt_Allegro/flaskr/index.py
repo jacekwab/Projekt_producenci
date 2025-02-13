@@ -44,7 +44,7 @@ def get_access_token(client_id, client_secret):
     return token
 
 
-class FirstConnCheckError(Exception):
+class AllegroConnCheckError(Exception):
     """Mainly to employ NoInternet_2 solution.
     To inform about a failure of solely the first Allegro connection attempt."""
 
@@ -81,8 +81,14 @@ def allegro_api_connection_check():
     except ConnectionError as e:
         print(f"allegro_api_connection_check(): Wystąpił błąd podczas pierwszego sprawdzenia połączenia z Allegro: {e}")
         get_access_token(client_id, client_secret)
-        raise FirstConnCheckError("First connection request was a failure. Token was renewed successfully.")
-
+        raise AllegroConnCheckError("First connection request was a failure. Token was renewed successfully.")
+    except requests.exceptions.HTTPError as e:
+        get_access_token(client_id, client_secret)
+        raise AllegroConnCheckError("HTTPError risen because of expired Token. It was renewed successfully.")
+    except Exception as e:
+        print(f"allegro_api_connection_check(): Niespodziewany błąd podczas sprawdzenia połączenia z Allegro: {e}")
+        raise #2025-02-13 18:46:47 should preserve the original exception's traceback and allow it to propagate up
+        # the call stack, maintaining all the information about what went wrong.
 
 def check_connection():
     #time.sleep(10) #2025-02-10 18:10:13 Tymczasowy sposób na przetestowanie właściwego działania frontendu
@@ -90,8 +96,8 @@ def check_connection():
         allegro_api_connection_check()
         #data_display() #2025-02-10 18:10:13 Tymczasowy sposób na przetestowanie właściwego działania frontendu
         return jsonify({'success': True}), 200
-    except FirstConnCheckError:
-        return jsonify({'success': True, 'error_message': 'Połączenie możliwe - choć pierwszy request nieudany.'}), 200
+    except AllegroConnCheckError:
+        return jsonify({'success': True, 'error_message': 'Błąd potwierdzeniem odpowiedzi serwera Allegro.'}), 200
     except requests.exceptions.HTTPError as e:
         print(f"check_connection() except requests.exceptions.HTTPError : Wystąpił nieoczekiwany błąd: {e}")
         return (jsonify({'success': False,
