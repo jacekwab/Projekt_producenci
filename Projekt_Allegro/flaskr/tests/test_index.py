@@ -7,7 +7,7 @@ import socket
 # Add the parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from flaskr.main import app
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 
 @pytest.fixture
@@ -180,3 +180,71 @@ def test_check_connection_unspecified_error_handling(client):
                                  'error_message':
                                      'Wystąpił inny nieprzewidziany, nieznany błąd.'}
         assert response.status_code == 500
+
+def test_check_connection_forbidden_error(client):
+    """Testuje obsługę błędu 403 Forbidden."""
+    with patch('requests.get', side_effect=requests.exceptions.HTTPError(response=Mock(status_code=403))):
+        response = client.get('/check_connection')
+        response_json = response.get_json()
+        assert response_json['success'] is True
+        assert 'Błąd potwierdzeniem odpowiedzi serwera Allegro.' in response_json['error_message']
+        assert response.status_code == 200
+
+
+def test_check_connection_too_many_requests(client):
+    """Testuje obsługę błędu 429 Too Many Requests."""
+    mock_response = Mock()
+    mock_response.status_code = 429
+    mock_response.headers = {'Retry-After': '2'}
+    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
+
+    with patch('requests.get', return_value=mock_response):
+        response = client.get('/check_connection')
+        response_json = response.get_json()
+        assert response_json['success'] is True
+        assert 'Błąd potwierdzeniem odpowiedzi serwera Allegro.' in response_json['error_message']
+        assert response.status_code == 200
+
+
+def test_check_connection_server_error(client):
+    """Testuje obsługę błędu 500+ (błąd serwera)."""
+    with patch('requests.get', side_effect=requests.exceptions.HTTPError(response=Mock(status_code=500))):
+        response = client.get('/check_connection')
+        response_json = response.get_json()
+        assert response_json['success'] is True
+        assert 'Błąd potwierdzeniem odpowiedzi serwera Allegro.' in response_json['error_message']
+        assert response.status_code == 200
+
+def test_data_display_too_many_requests(client, mocker):
+    """Testuje obsługę błędu 429 Too Many Requests w data_display."""
+    mock_response = Mock()
+    mock_response.status_code = 429
+    mock_response.headers = {'Retry-After': '2'}
+    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
+    mocker.patch('requests.get', return_value=mock_response)
+    response = client.post('/results', data={'phrase': 'test'})
+    assert response.status_code == 302
+    assert response.location == '/'
+
+def test_data_display_server_error(client, mocker):
+    """Testuje obsługę błędu 500+ w data_display."""
+    mock_response = Mock()
+    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=Mock(status_code=500))
+    mocker.patch('requests.get', return_value=mock_response)
+    response = client.post('/results', data={'phrase': 'test'})
+    assert response.status_code == 200
+    assert response.location is None
+
+def test_data_display_timeout(client, mocker):
+    """Testuje obsługę błędu Timeout w data_display."""
+    mocker.patch('requests.get', side_effect=requests.exceptions.Timeout)
+    response = client.post('/results', data={'phrase': 'test'})
+    assert response.status_code == 302
+    assert response.location == '/'
+
+def test_data_display_unknown_error(client, mocker):
+    """Testuje obsługę nieznanego błędu w data_display."""
+    mocker.patch('requests.get', side_effect=Exception("Nieznany błąd"))
+    response = client.post('/results', data={'phrase': 'test'})
+    assert response.status_code == 302
+    assert response.location == '/'
