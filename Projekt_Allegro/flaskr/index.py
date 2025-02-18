@@ -97,18 +97,21 @@ def check_connection():
         #data_display() #2025-02-10 18:10:13 Tymczasowy sposób na przetestowanie właściwego działania frontendu
         return jsonify({'success': True}), 200
     except AllegroConnCheckError:
-        return jsonify({'success': True, 'error_message': 'Błąd potwierdzeniem odpowiedzi serwera Allegro.'}), 200
+        err_msg = "check_connection() AllegroConnCheckError: Błąd na potrzeby testów. " + \
+                  "Potwierdzeniem finalnego otrzymania odpowiedzi serwera Allegro."
+        return jsonify({'success': True, 'error_message': err_msg}), 200
     except requests.exceptions.HTTPError as e:
         print(f"check_connection() except requests.exceptions.HTTPError : Wystąpił nieoczekiwany błąd: {e}")
         return (jsonify({'success': False,
                         'error_message': 'Nie udało się połączyć z zewnętrznym serwerem Allegro, przepraszamy.'}), 500)
-    except ConnectionError as e:#TODO: 2025-02-12 16:19:33: Sprawdzić, czemu dotychczasowe sposoby testowania nie działają...
-        #TODO: 2025-02-12 16:19:33:... dla tego przypadku. 2 połączenie nieudane - zostaje uruchomiony ten blok.
+    except ConnectionError as e:#TODO: 2025-02-12 16:19:33: Sprawdzić, czemu dotychczasowe sposoby testowania...
+        #TODO: 2025-02-12 16:19:33:... nie działają dla tego przypadku. ...
+        # ... 2 połączenie nieudane - zostaje uruchomiony ten blok.
         print(f"check_connection() except ConnectionError : Wystąpił błąd połączenia internetowego: {e}")
         return jsonify({'success': False, 'error_message': 'Brak połączenia internetowego.'}), 500
     except Exception as e:
         print(f"check_connection() Exception: Wystąpił nieoczekiwany błąd: {e}")
-        return jsonify({'success': False, 'error_message': 'Wystąpił inny nieprzewidziany, nieznany błąd.'}), 500
+        return jsonify({'success': False, 'error_message': 'Wystąpił nieprzewidziany, nieznany błąd.'}), 500
 
 
 def search_form_display():
@@ -171,14 +174,7 @@ def data_display():
 
         pack_data_allegro_products = {}
 
-        load_dotenv()
-        # Dane do uwierzytelnienia
-        #zmienne lokalne znajdują się w pliku .env
-        CLIENT_ID = os.getenv("CLIENT_ID")
-        CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-
         file_token_path = "./token.txt"
-
         if os.path.exists(file_token_path) == False:
             file_token = open(f"{file_token_path}", "w")
             file_token.close()
@@ -187,6 +183,8 @@ def data_display():
             with open(f"{file_token_path}", "r") as file_token:
                 token = file_token.readline()
 
+        client_id, client_secret = get_auth_data()
+
         #Użycie bloku try z powodu przewidzianego błędu nieaktualnego tokenu
         try:
             pack_data_allegro_products = get_and_process_products_data(phrase, token)
@@ -194,7 +192,7 @@ def data_display():
             # Obsługa specyficznych kodów HTTP
             if http_err.response.status_code == 401:
                 print("Błąd 401: Token nieaktualny lub nieprawidłowy. Odświeżam token...")
-                token = get_access_token(CLIENT_ID, CLIENT_SECRET)
+                token = get_access_token(client_id, client_secret)
                 return get_and_process_products_data(phrase, token)
             elif http_err.response.status_code == 403:
                 print("Błąd 403: Brak uprawnień do zasobu. Sprawdź token i endpoint.")

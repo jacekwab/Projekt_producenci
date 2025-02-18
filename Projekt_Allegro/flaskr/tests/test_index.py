@@ -123,8 +123,11 @@ def test_failure_check_connection(client):
     with NoInternet_2():  # Symulujemy brak internetu przy pierwszym zapytaniu
         response = client.get('/check_connection')
         response_json = response.get_json()
+
+        err_msg = "check_connection() AllegroConnCheckError: Błąd na potrzeby testów. " + \
+                  "Potwierdzeniem finalnego otrzymania odpowiedzi serwera Allegro."
         assert response_json == {'success': True,
-                                 'error_message': 'Błąd potwierdzeniem odpowiedzi serwera Allegro.'}
+                                 'error_message': err_msg}
         assert response.status_code == 200
 
 
@@ -142,14 +145,16 @@ class NoInternet_3:
         # Raise a ConnectionError when any socket method is called
         raise ConnectionError("No internet connection")
 
-#TODO: 2025-02-12 16:19:33: Inne niż oczekiwane działanie tego testu sprawia, że nie ma
+#TODO: 2025-02-12 16:19:33: Inne niż oczekiwane działanie tego testu (wywołuje inny błąd, niż błąd połączenia)
+# sprawia, że trzeba co jakiś czas weryfikować, czy przyczyna niezamierzonego działania jest znana i test należy
+# przepisać/wycofać.
 def test_alternative_failure_check_connection(client):
     """Tests whether json is properly returned if the attempt to connect to the application and use it
     is not successful - another unknown error appears."""
     with NoInternet_3():  # Symulujemy brak internetu przy pierwszym zapytaniu
         response = client.get('/check_connection')
         response_json = response.get_json()
-        assert response_json == {'success': False, 'error_message': 'Wystąpił inny nieprzewidziany, nieznany błąd.'}
+        assert response_json == {'success': False, 'error_message': 'Wystąpił nieprzewidziany, nieznany błąd.'}
         assert response.status_code == 500
 
 
@@ -161,9 +166,11 @@ def test_check_connection_http_error_handling(client):
         response = client.get('/check_connection')
 
         response_json = response.get_json()
+        err_msg = "check_connection() AllegroConnCheckError: Błąd na potrzeby testów. " + \
+                  "Potwierdzeniem finalnego otrzymania odpowiedzi serwera Allegro."
         assert response_json == {'success': True,
                                  'error_message':
-                                     'Błąd potwierdzeniem odpowiedzi serwera Allegro.'}
+                                     err_msg}
         assert response.status_code == 200
 
 
@@ -174,11 +181,10 @@ def test_check_connection_unspecified_error_handling(client):
         # This request will trigger the mock, raising an ValueError
         response = client.get('/check_connection')
 
-
         response_json = response.get_json()
         assert response_json == {'success': False,
                                  'error_message':
-                                     'Wystąpił inny nieprzewidziany, nieznany błąd.'}
+                                     'Wystąpił nieprzewidziany, nieznany błąd.'}
         assert response.status_code == 500
 
 def test_check_connection_forbidden_error(client):
@@ -187,12 +193,14 @@ def test_check_connection_forbidden_error(client):
         response = client.get('/check_connection')
         response_json = response.get_json()
         assert response_json['success'] is True
-        assert 'Błąd potwierdzeniem odpowiedzi serwera Allegro.' in response_json['error_message']
+        err_msg = "check_connection() AllegroConnCheckError: Błąd na potrzeby testów. " + \
+                  "Potwierdzeniem finalnego otrzymania odpowiedzi serwera Allegro."
+        assert err_msg in response_json['error_message']
         assert response.status_code == 200
 
 
 def test_check_connection_too_many_requests(client):
-    """Testuje obsługę błędu 429 Too Many Requests."""
+    """Testuje obsługę błędu 429 Too Many Requests w 'check_connection'."""
     mock_response = Mock()
     mock_response.status_code = 429
     mock_response.headers = {'Retry-After': '2'}
@@ -202,7 +210,9 @@ def test_check_connection_too_many_requests(client):
         response = client.get('/check_connection')
         response_json = response.get_json()
         assert response_json['success'] is True
-        assert 'Błąd potwierdzeniem odpowiedzi serwera Allegro.' in response_json['error_message']
+        err_msg = "check_connection() AllegroConnCheckError: Błąd na potrzeby testów. " + \
+                  "Potwierdzeniem finalnego otrzymania odpowiedzi serwera Allegro."
+        assert err_msg in response_json['error_message']
         assert response.status_code == 200
 
 
@@ -212,7 +222,9 @@ def test_check_connection_server_error(client):
         response = client.get('/check_connection')
         response_json = response.get_json()
         assert response_json['success'] is True
-        assert 'Błąd potwierdzeniem odpowiedzi serwera Allegro.' in response_json['error_message']
+        err_msg = "check_connection() AllegroConnCheckError: Błąd na potrzeby testów. " + \
+                  "Potwierdzeniem finalnego otrzymania odpowiedzi serwera Allegro."
+        assert err_msg in response_json['error_message']
         assert response.status_code == 200
 
 def test_data_display_too_many_requests(client, mocker):

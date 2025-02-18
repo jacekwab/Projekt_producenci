@@ -77,7 +77,7 @@ document.getElementById('search-form').addEventListener('submit', function(event
     .then(response => {
         if (!response.ok) {
             return response.json();
-        }
+        };
         return response.json();
     })
     .then(data => {
@@ -86,14 +86,17 @@ document.getElementById('search-form').addEventListener('submit', function(event
             //2025-02-10 16:14:15 dane formularza wysłane z oczekiwaniem, że wyszukiwanie będzie udane
             searchButton.disabled = false;
         } else {
-            alert('Próba połączenia zakończona błędem.');
             if (data && data.error_message) {
                 errorMessage.textContent = data.error_message;//TODO 2025-02-10: Dodanie odpowiednich łańcuchów
                 //TODO 2025-02-10:w części backendowej
                 alert('Próba połączenia zakończona błędem.');
                 setTimeout(() => searchButton.disabled = false, 3000);
+            }
+            else {
+                errorMessage.textContent = 'Wystąpił nieprzewidziany błąd.'
+                alert('Próba połączenia zakończona błędem.');
             };
-        }
+        };
     })
     .catch(error => {
         if (error.message === 'Request timed out') {
@@ -109,6 +112,6 @@ document.getElementById('search-form').addEventListener('submit', function(event
             document.getElementById('search-form').submit(); //2025-02-10 16:14:15 Próba połączenia nieudana prawdopodobnie
             //2025-02-10 16:14:15 z powodu nieaktywnego javascripta - dane formularza wysłane bez oczekiwania, że wyszukiwanie będzie udane
             setTimeout(() => searchButton.disabled = false, 3000);
-        }
+        };
     });
 });
