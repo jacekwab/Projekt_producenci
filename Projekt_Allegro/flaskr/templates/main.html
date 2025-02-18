@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block page_body %}
+{{ show_messages() }}
     <div><h1>Przeszukaj bazę produktów</h1></div>
     <form id="search-form" action="{{ url_for('data_display') }}" method="POST">
         <div class="form-group col-5">

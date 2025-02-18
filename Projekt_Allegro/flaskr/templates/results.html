@@ -9,6 +9,7 @@
 {% endblock %}
 
 {% block page_body %}
+{{ show_messages() }}
 	<form id="search-form" action="{{ url_for('data_display') }}" method="POST">
 		<div class="form-group col-5">
 			<input name="phrase" class="form-control" id="search-text-field" value="{{ data['phrase'] }}"
