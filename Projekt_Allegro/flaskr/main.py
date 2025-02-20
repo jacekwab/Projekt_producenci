@@ -1,9 +1,14 @@
 from flask import Flask
 from flask_cors import CORS
+from error_logger import setup_global_exception_logging, init_db
 
 
 def create_app():
     app = Flask(__name__)
+    # Inicjalizacja bazy danych i ustawienie globalnego logowania błędów
+    init_db()
+    setup_global_exception_logging()
+    import time
     from flaskr.index import data_display, search_form_display, check_connection
     CORS(app, resources={r"/check_connection": {"origins": "*"}})  # Allow all origins for testing
 

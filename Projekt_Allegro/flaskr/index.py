@@ -3,6 +3,10 @@ from dotenv import load_dotenv
 import os
 import time
 from flask import render_template, request, redirect, url_for, flash, jsonify
+from error_logger import log_error
+
+
+
 
 # stała delay wskazuje ile sekund jest przerwy między kolejnymi połączeniami
 DELAY = 0
@@ -111,6 +115,7 @@ def check_connection():
         return jsonify({'success': False, 'error_message': 'Brak połączenia internetowego.'}), 500
     except Exception as e:
         print(f"check_connection() Exception: Wystąpił nieoczekiwany błąd: {e}")
+        log_error("check_connection",e)
         return jsonify({'success': False, 'error_message': 'Wystąpił nieprzewidziany, nieznany błąd.'}), 500
 
 
