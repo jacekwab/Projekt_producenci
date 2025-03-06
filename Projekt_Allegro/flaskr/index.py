@@ -3,9 +3,8 @@ from dotenv import load_dotenv
 import os
 import time
 from flask import render_template, request, redirect, url_for, flash, jsonify
-from error_logger import log_error
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash
+from db import log_error
+
 
 
 # stała delay wskazuje ile sekund jest przerwy między kolejnymi połączeniami
@@ -16,36 +15,7 @@ DELAY = 0
 MAX_PRODUCTS = 210
 UNEXPECTED_ERROR_MSG = "Wystąpił nieoczekiwany, nieznany błąd naszej aplikacji webowej." + \
                        "Możesz spróbować ponownie."
-db = SQLAlchemy()
 
-
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    login = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    is_admin = db.Column(db.Boolean, default=False)
-    is_active = db.Column(db.Boolean, default=True)
-
-
-def init_user_db(app):
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    db.init_app(app)
-    with app.app_context():
-        db.create_all()
-
-        # Tworzenie konta administratora, jeśli nie istnieje
-        if not User.query.filter_by(login='admin').first():
-            admin_user = User(
-                login='admin',
-                password_hash=generate_password_hash('admin123'),
-                email='admin@example.com',
-                is_admin=True,
-                is_active=True
-            )
-            db.session.add(admin_user)
-            db.session.commit()
 def get_auth_data():
     load_dotenv()
     # Dane do uwierzytelnienia
