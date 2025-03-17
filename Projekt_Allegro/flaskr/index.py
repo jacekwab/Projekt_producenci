@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 import time
 from flask import render_template, request, redirect, url_for, flash, jsonify
-from db import log_error
+from db import log_error, add_process_time
 
 
 
@@ -159,20 +159,30 @@ def data_display():
                     'phrase': phrase,
                     'page.id': next_page_id
                 }
+                time_start=time.perf_counter()
                 response = requests.get(PRODUCTS_URL, headers=headers, params=params, timeout = 180)
                 response.raise_for_status()
+                time_end = time.perf_counter()
+                process_time = time_end-time_start
+                add_process_time("get_products_data",process_time)
+                time_start = time.perf_counter()
                 data = response.json()
                 products = data.get('products', [])
                 all_products.extend(products)
 
                 number_products += len(products)
                 next_page = data.get('nextPage')
+                time_end = time.perf_counter()
+                process_time = time_end - time_start
+                add_process_time("process_products_data", process_time)
                 if not next_page:  # Brak kolejnej strony
                     break
                 next_page_id = data['nextPage']['id']
                 time.sleep(DELAY)
 
             # Porządkowanie wyników
+            time_start = time.perf_counter()
+            print (time_start)
             data_allegro_products = {'phrase': phrase}
             data_allegro_products['amount'] = len(all_products)
             for ordinal, product in enumerate(all_products):
@@ -187,6 +197,9 @@ def data_display():
                     data_allegro_product['Marka'] = "Producent: Brak danych"
 
                 data_allegro_products[f'Product{ordinal}'] = data_allegro_product
+            time_end = time.perf_counter()
+            process_time = time_end - time_start
+            add_process_time("process_data_pack", process_time)
             return data_allegro_products
 
         pack_data_allegro_products = {}

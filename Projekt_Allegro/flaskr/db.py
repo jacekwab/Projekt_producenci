@@ -11,6 +11,7 @@ db = SQLAlchemy()
 
 
 class User(db.Model):
+    #inicjowanie tabeli użytkowników
     id = db.Column(db.Integer, primary_key=True)
     login = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
@@ -20,12 +21,19 @@ class User(db.Model):
 
 
 class ErrorLog(db.Model):
+    # inicjowanie tabeli z błędami
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     timestamp = db.Column(db.Text, nullable=False)
     function_name = db.Column(db.Text, nullable=False)
     error_type = db.Column(db.Text, nullable=False)
     custom_message = db.Column(db.Text, nullable=True)
     full_traceback = db.Column(db.Text, nullable=False)
+class Time_process(db.Model):
+    #inicjowanie tabeli z zapisem czasu procesów
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    timestamp = db.Column(db.Text, nullable=False)
+    function_name = db.Column(db.Text, nullable=False)
+    process_time_seconds = db.Column(db.Float, nullable=False)
 
 
 def init_db(app):
@@ -89,3 +97,15 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
 
 def setup_global_exception_logging():
     sys.excepthook = global_exception_handler
+
+def add_process_time(function_name, process_time_seconds):
+    """Funkcja zapisuje dane dotyczące błędu w bazie danych"""
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    new_process_time = Time_process(
+        timestamp=timestamp,
+        function_name=function_name,
+        process_time_seconds=process_time_seconds
+    )
+    db.session.add(new_process_time)
+    db.session.commit()
