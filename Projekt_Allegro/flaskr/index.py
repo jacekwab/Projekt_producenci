@@ -182,7 +182,6 @@ def data_display():
 
             # Porządkowanie wyników
             time_start = time.perf_counter()
-            print (time_start)
             data_allegro_products = {'phrase': phrase}
             data_allegro_products['amount'] = len(all_products)
             for ordinal, product in enumerate(all_products):
