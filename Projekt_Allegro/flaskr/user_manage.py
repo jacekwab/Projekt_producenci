@@ -13,30 +13,43 @@ def is_valid_email(email):
 
 
 def register_user():
-    data = request.json
-    login = data.get("login")
-    email = data.get("email")
-    password = data.get("password")
+    if not 'user_login' in session:
+        return redirect(url_for('login_user'))
+    user = {} #zmienna potrzebna do wstępnego uzupełniania formularzy
 
-    if not login or not email or not password:
-        return jsonify({"error": "Wszystkie pola są wymagane"}), 400
+    if request.method == 'GET':
+        return render_template('new_user.html', user=user)
+    else:
+        login = request.form.get("login")
+        password = request.form.get("password")
+        email = request.form.get("email")
+        print(login, email, password)
 
-    if not is_valid_email(email):
-        return jsonify({"error": "Nieprawidłowy adres e-mail"}), 400
+        if not login or not email or not password:
+            flash("Wszystkie pola są wymagane", "danger")
+            return render_template('new_user.html', user=user)
 
-    if User.query.filter_by(login=login).first() or User.query.filter_by(email=email).first():
-        return jsonify({"error": "Użytkownik o podanym loginie lub e-mailu już istnieje"}), 400
 
-    hashed_password = generate_password_hash(password)
-    new_user = User(login=login, email=email, password_hash=hashed_password)
-    db.session.add(new_user)
-    db.session.commit()
-    return jsonify({"message": "Rejestracja zakończona sukcesem"}), 201
+        if not is_valid_email(email):
+            flash("Nieprawidłowy adres e-mail", "danger")
+            return render_template('new_user.html', user=user)
+
+        if User.query.filter_by(login=login).first() or User.query.filter_by(email=email).first():
+            flash("Użytkownik o podanym loginie lub e-mailu już istnieje", "danger")
+            return render_template('new_user.html', user=user)
+
+        hashed_password = generate_password_hash(password)
+        new_user = User(login=login, email=email, password_hash=hashed_password)
+        db.session.add(new_user)
+        db.session.commit()
+        flash("Rejestracja zakończona sukcesem","success")
+
+        return redirect(url_for("search_form_display"))
 
 
 def login_user():
     if request.method == 'GET':
-        return render_template('login.html', active_menu='login')
+        return render_template('login.html')
     else:
         if request.method == "POST":
             login = request.form.get("login")
@@ -60,7 +73,12 @@ def login_user():
             return redirect(url_for("login_user"))
 
         return redirect(url_for("login_user"))
-
+def logout():
+    if 'user_login' in session:
+        user_login = session['user_login']
+        session.pop('user_login', None)
+        flash(f'Wylogowano użytkownika: {user_login}')
+    return redirect(url_for("login_user"))
 
 def change_password():
     data = request.json
