@@ -86,18 +86,18 @@ def allegro_api_connection_check():
         get_access_token(client_id, client_secret)
         log_message = "First connection request was a failure. Token was renewed successfully."
         print(log_message)
-        log_error("allegro_api_connection_check", log_message)
+        log_error("allegro_api_connection_check", e, log_message)
         raise AllegroConnCheckError(log_message)
     except requests.exceptions.HTTPError as e:
         get_access_token(client_id, client_secret)
         log_message = "HTTPError risen because of expired Token. It was renewed successfully."
         print(log_message)
-        log_error("allegro_api_connection_check", log_message)
+        log_error("allegro_api_connection_check", e, log_message)
         raise AllegroConnCheckError(log_message)
     except Exception as e:
         log_message = f"allegro_api_connection_check(): Niespodziewany błąd podczas sprawdzenia połączenia z Allegro: {e}"
         print(log_message)
-        log_error("allegro_api_connection_check", log_message)
+        log_error("allegro_api_connection_check", e, log_message)
         raise #2025-02-13 18:46:47 should preserve the original exception's traceback and allow it to propagate up
         # the call stack, maintaining all the information about what went wrong.
 
@@ -114,7 +114,7 @@ def check_connection():
     except requests.exceptions.HTTPError as e:
         log_message = f"check_connection() except requests.exceptions.HTTPError : Wystąpił nieoczekiwany błąd: {e}"
         print(log_message)
-        log_error("check_connection", log_message)
+        log_error("check_connection", e, log_message)
         return (jsonify({'success': False,
                         'error_message': 'Nie udało się połączyć z zewnętrznym serwerem Allegro, przepraszamy.'}), 500)
     except ConnectionError as e:#TODO: 2025-02-12 16:19:33: Sprawdzić, czemu dotychczasowe sposoby testowania...
@@ -122,12 +122,12 @@ def check_connection():
         # ... 2 połączenie nieudane - zostaje uruchomiony ten blok.
         log_message = f"check_connection() except ConnectionError : Wystąpił błąd połączenia internetowego: {e}"
         print(log_message)
-        log_error("check_connection", log_message)
+        log_error("check_connection", e, log_message)
         return jsonify({'success': False, 'error_message': 'Brak połączenia internetowego.'}), 500
     except Exception as e:
         log_message = f"check_connection() Exception: Wystąpił nieoczekiwany błąd: {e}"
         print(log_message)
-        log_error("check_connection",log_message)
+        log_error("check_connection", e, log_message)
         return jsonify({'success': False, 'error_message': 'Wystąpił nieprzewidziany, nieznany błąd.'}), 500
 
 
@@ -182,7 +182,6 @@ def data_display():
 
             # Porządkowanie wyników
             time_start = time.perf_counter()
-            print (time_start)
             data_allegro_products = {'phrase': phrase}
             data_allegro_products['amount'] = len(all_products)
             for ordinal, product in enumerate(all_products):
@@ -199,6 +198,7 @@ def data_display():
                 data_allegro_products[f'Product{ordinal}'] = data_allegro_product
             time_end = time.perf_counter()
             process_time = time_end - time_start
+            print(process_time)
             add_process_time("process_data_pack", process_time)
             return data_allegro_products
 
@@ -223,28 +223,28 @@ def data_display():
             if http_err.response.status_code == 401:
                 log_message = "Błąd 401: Token nieaktualny lub nieprawidłowy. Odświeżam token..."
                 print(log_message)
-                log_error("data_download_and_preparation", log_message)
+                log_error("data_download_and_preparation", http_err, log_message)
                 token = get_access_token(client_id, client_secret)
                 return get_and_process_products_data(phrase, token)
             elif http_err.response.status_code == 403:
                 log_message = "Błąd 403: Brak uprawnień do zasobu. Sprawdź token i endpoint."
                 print(log_message)
-                log_error("data_download_and_preparation", log_message)
+                log_error("data_download_and_preparation", http_err, log_message)
             elif http_err.response.status_code == 429:
                 retry_after = int(http_err.response.headers.get('Retry-After', 1))
                 log_message = f"Błąd 429: Przekroczono limit żądań. Spróbuję ponownie za {retry_after} sekund."
                 print(log_message)
-                log_error("data_download_and_preparation", log_message)
+                log_error("data_download_and_preparation", http_err, log_message)
                 time.sleep(retry_after)
                 return get_and_process_products_data(phrase, token)
             elif 500 <= http_err.response.status_code < 600:
                 log_message = f"HTTPError: Wystąpił nieoczekiwany błąd HTTP ({http_err.response.status_code}): {http_err}"
                 print(log_message)
-                log_error("data_download_and_preparation", log_message)
+                log_error("data_download_and_preparation", http_err, log_message)
             else:
                 log_message = f"HTTPError: Wystąpił nieoczekiwany błąd HTTP ({http_err.response.status_code}): {http_err}"
                 print(log_message)
-                log_error("data_download_and_preparation", log_message)
+                log_error("data_download_and_preparation", http_err, log_message)
 
         return pack_data_allegro_products
 
@@ -254,47 +254,47 @@ def data_display():
         if http_err.response.status_code == 401:
             log_message = "Błąd naszej aplikacji webowej. Możesz spróbować ponownie."
             print(log_message)
-            log_error("data_display", log_message)
+            log_error("data_display", http_err, log_message)
             return redirect(url_for('search_form_display'))
         elif http_err.response.status_code == 429:
             retry_after = int(http_err.response.headers.get('Retry-After', 1))
             user_retry_after = retry_after * 2
             log_message = f"Przekroczono limit żądań. Serwer odpowiada czasem oczekiwania: {retry_after} sekund."
             print(log_message)
-            log_error("data_display", log_message)
+            log_error("data_display", http_err, log_message)
             flash("Nasza aplikacja webowa przekroczyła dozwoloną liczbę połączeń z serwerem Allegro." + \
                   f"Spróbuj ponownie za {user_retry_after} sekund/y.")
             return redirect(url_for('search_form_display'))
         elif 500 <= http_err.response.status_code < 600:
             log_message = f"Błąd serwera ({http_err.response.status_code})."
             print(log_message)
-            log_error("data_display", log_message)
+            log_error("data_display", http_err, log_message)
             flash(UNEXPECTED_ERROR_MSG)
             return redirect(url_for('search_form_display'))
         else:
             log_message = f"HTTPError: {http_err}"
             print(log_message)
             flash(UNEXPECTED_ERROR_MSG)
-            log_error("data_display", log_message)
+            log_error("data_display", http_err, log_message)
             return redirect(url_for('search_form_display'))
-    except requests.exceptions.ConnectionError:
+    except requests.exceptions.ConnectionError as e:
         log_message = "data_display(): Błąd połączenia. Rezygnuję i wracam do strony głównej."
         print(log_message)
         time.sleep(DELAY)
         flash("Błąd połączenia. Możesz spróbować ponownie.")
-        log_error("data_display", log_message)
+        log_error("data_display", e, log_message)
         return redirect(url_for('search_form_display'))
 
-    except requests.exceptions.Timeout:
+    except requests.exceptions.Timeout as e:
         log_message = "Przekroczono limit czasu oczekiwania."
         print (log_message)
         flash("Błąd połączenia. Możesz spróbować ponownie.")
-        log_error("data_display", log_message)
+        log_error("data_display", e, log_message)
         return redirect(url_for('search_form_display'))
     except Exception as e:
         log_message = f"data_display() Exception: Wystąpił nieoczekiwany błąd: {e}"
         print(log_message)
         flash(UNEXPECTED_ERROR_MSG)
-        log_error("data_display", log_message)
+        log_error("data_display", e, log_message)
         return redirect(url_for('search_form_display'))
     return render_template('results.html', data=pack_data_allegro_products)

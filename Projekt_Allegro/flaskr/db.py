@@ -28,6 +28,8 @@ class ErrorLog(db.Model):
     error_type = db.Column(db.Text, nullable=False)
     custom_message = db.Column(db.Text, nullable=True)
     full_traceback = db.Column(db.Text, nullable=False)
+
+
 class Time_process(db.Model):
     #inicjowanie tabeli z zapisem czasu procesów
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
