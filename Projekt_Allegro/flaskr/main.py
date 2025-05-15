@@ -1,10 +1,15 @@
 from flask import Flask
 from flask_cors import CORS
-
+from db import setup_global_exception_logging, init_db
+import time
+from index import data_display, search_form_display, check_connection
 
 def create_app():
     app = Flask(__name__)
-    from flaskr.index import data_display, search_form_display, check_connection
+    # Inicjalizacja bazy danych i ustawienie globalnego logowania błędów
+    init_db(app)
+    setup_global_exception_logging()
+
     CORS(app, resources={r"/check_connection": {"origins": "*"}})  # Allow all origins for testing
 
     app.add_url_rule('/check_connection', endpoint=None, view_func=check_connection, methods=['GET', 'POST'])
